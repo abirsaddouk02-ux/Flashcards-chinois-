@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#c8402b">
+<title>Mon vocabulaire chinois</title>
+<style>
+:root{
+  --bg:#faf6ee; --card:#fffdf8; --ink:#1f1b16; --muted:#7a7165; --line:#e4dccd;
+  --accent:#c8402b; --accent-ink:#ffffff; --ok:#2f7d4f; --ko:#b3402f; --soft:#f1e9da;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#171512; --card:#211e1a; --ink:#f1ebe0; --muted:#a29886; --line:#383229;
+    --accent:#e2644d; --accent-ink:#1a0e0b; --ok:#6cc08b; --ko:#e27d6b; --soft:#2b2721;
+  }
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+.zh,.hanzi,.exzh{font-family:"Noto Serif SC","Songti SC","STSong","SimSun","Source Han Serif SC",serif}
+.wrap{max-width:720px; margin:0 auto; padding:20px 16px 64px}
+header{display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:4px 16px; margin-bottom:14px}
+h1{margin:0; font-size:1.35rem; letter-spacing:.01em}
+h1 .zh{color:var(--accent); margin-right:.4em}
+#stats{color:var(--muted); font-size:.9rem}
+nav{display:flex; gap:4px; border-bottom:1px solid var(--line); margin-bottom:18px}
+nav button{
+  appearance:none; background:none; border:0; border-bottom:3px solid transparent;
+  padding:10px 14px; font:inherit; color:var(--muted); cursor:pointer; margin-bottom:-1px;
+}
+nav button[aria-selected="true"]{color:var(--ink); border-bottom-color:var(--accent); font-weight:600}
+.controls{display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center; margin-bottom:16px}
+.controls label{font-size:.88rem; color:var(--muted); display:flex; align-items:center; gap:6px}
+select,input[type=text],input[type=search]{
+  font:inherit; color:var(--ink); background:var(--card);
+  border:1px solid var(--line); border-radius:8px; padding:8px 10px; min-width:0;
+}
+select:focus,input:focus,button:focus-visible,summary:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+#card{
+  background:var(--card); border:1px solid var(--line); border-radius:16px;
+  min-height:300px; padding:28px 22px; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; text-align:center; gap:8px; cursor:pointer;
+  box-shadow:0 1px 0 var(--line), 0 12px 28px -18px rgba(60,40,10,.35);
+}
+.hanzi{font-size:4.2rem; line-height:1.15; font-weight:500}
+.hanzi.long{font-size:1.9rem; line-height:1.4}
+.py{font-size:1.35rem; color:var(--accent)}
+.py.big{font-size:2.2rem}
+.fr{font-size:1.2rem}
+.fr.big{font-size:1.8rem}
+.ex{margin-top:14px; padding-top:14px; border-top:1px dashed var(--line); width:100%}
+.exzh{font-size:1.2rem}
+.expy{color:var(--muted); font-size:.95rem}
+.exfr{font-size:.95rem; font-style:italic}
+.hint{color:var(--muted); font-size:.82rem; margin-top:10px}
+.badge{display:inline-block; font-size:.72rem; padding:2px 8px; border-radius:99px; background:var(--soft); color:var(--muted); border:1px solid var(--line)}
+.tag{font-size:.78rem; color:var(--muted); margin-top:6px}
+.icon{appearance:none; background:none; border:0; cursor:pointer; font-size:1rem; padding:2px 6px; border-radius:6px; color:inherit}
+.icon:hover{background:var(--soft)}
+.actions{display:flex; gap:10px; margin-top:14px}
+.actions button{flex:1}
+button.primary,button.ok,button.ko,button.ghost{
+  font:inherit; padding:12px 16px; border-radius:10px; cursor:pointer; border:1px solid transparent;
+}
+button.primary{background:var(--accent); color:var(--accent-ink); font-weight:600}
+button.ok{background:var(--ok); color:#fff; font-weight:600}
+button.ko{background:var(--ko); color:#fff; font-weight:600}
+button.ghost{background:var(--card); color:var(--ink); border-color:var(--line)}
+button[hidden]{display:none}
+#progress{color:var(--muted); font-size:.85rem; text-align:center; margin-top:10px; min-height:1.2em}
+.done p{margin:.3em 0}
+.muted{color:var(--muted)}
+/* liste */
+#count{color:var(--muted); font-size:.88rem; margin:0 0 10px}
+.item{border-bottom:1px solid var(--line)}
+.item summary{
+  list-style:none; cursor:pointer; padding:10px 4px; display:grid;
+  grid-template-columns:minmax(64px,auto) minmax(90px,auto) 1fr; gap:4px 14px; align-items:baseline;
+}
+.item summary::-webkit-details-marker{display:none}
+.item summary .zh{font-size:1.25rem}
+.item summary .p{color:var(--accent)}
+.item summary .f{color:var(--ink)}
+.item .more{padding:0 4px 14px; color:var(--muted); font-size:.95rem}
+.item .more .exzh{color:var(--ink)}
+.item .more .row{display:flex; gap:10px; align-items:center; margin-top:8px; flex-wrap:wrap}
+@media (max-width:520px){
+  .item summary{grid-template-columns:auto 1fr}
+  .item summary .f{grid-column:1 / -1}
+  .hanzi{font-size:3.4rem}
+}
+/* formulaire */
+form{display:grid; gap:12px}
+form label{display:grid; gap:4px; font-size:.88rem; color:var(--muted)}
+form input{width:100%; font-size:1rem}
+.two{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+@media (max-width:520px){.two{grid-template-columns:1fr}}
+.note{font-size:.85rem; color:var(--muted); margin:2px 0 0}
+.panel{margin-top:26px; padding:16px; border:1px solid var(--line); border-radius:12px; background:var(--card)}
+.panel h2{margin:0 0 6px; font-size:1.05rem}
+#toast{
+  position:fixed; left:50%; bottom:22px; transform:translateX(-50%); background:var(--ink); color:var(--bg);
+  padding:10px 16px; border-radius:10px; font-size:.92rem; opacity:0; pointer-events:none; transition:opacity .2s;
+}
+#toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><span class="zh">汉语</span>Mon vocabulaire</h1>
+    <div id="stats"></div>
+  </header>
+
+  <nav role="tablist" aria-label="Sections">
+    <button role="tab" data-view="review" aria-selected="true">Réviser</button>
+    <button role="tab" data-view="list" aria-selected="false">Liste</button>
+    <button role="tab" data-view="add" aria-selected="false">Ajouter</button>
+  </nav>
+
+  <!-- Réviser -->
+  <section id="view-review">
+    <div class="controls">
+      <label>Page <select id="f-tag"></select></label>
+      <label>Recto
+        <select id="f-front">
+          <option value="zh">Caractères</option>
+          <option value="py">Pinyin</option>
+          <option value="fr">Français</option>
+        </select>
+      </label>
+      <label><input type="checkbox" id="f-all"> Tout réviser</label>
+    </div>
+    <div id="card" role="button" tabindex="0" aria-label="Carte, touche pour retourner"></div>
+    <div id="progress"></div>
+    <div class="actions">
+      <button class="primary" id="btn-flip">Retourner</button>
+      <button class="ko" id="btn-ko" hidden>Pas su</button>
+      <button class="ok" id="btn-ok" hidden>Je savais</button>
+    </div>
+    <p class="hint" style="text-align:center">Raccourcis : espace pour retourner, flèche gauche « pas su », flèche droite « je savais ».</p>
+  </section>
+
+  <!-- Liste -->
+  <section id="view-list" hidden>
+    <div class="controls">
+      <input type="search" id="q" placeholder="Chercher (caractères, pinyin sans accents, français)" style="flex:1; min-width:220px">
+    </div>
+    <p id="count"></p>
+    <div id="items"></div>
+  </section>
+
+  <!-- Ajouter -->
+  <section id="view-add" hidden>
+    <form id="add-form" autocomplete="off">
+      <div class="two">
+        <label>Caractères
+          <input type="text" id="a-zh" class="zh" required lang="zh">
+        </label>
+        <label>Pinyin
+          <input type="text" id="a-py" required placeholder="ex. ni3 hao3 devient nǐ hǎo">
+        </label>
+      </div>
+      <label>Traduction
+        <input type="text" id="a-fr" required>
+      </label>
+      <label>Phrase d'exemple (facultatif)
+        <input type="text" id="a-ex" class="zh" lang="zh">
+      </label>
+      <div class="two">
+        <label>Pinyin de la phrase
+          <input type="text" id="a-expy">
+        </label>
+        <label>Traduction de la phrase
+          <input type="text" id="a-exfr">
+        </label>
+      </div>
+      <label>Page ou thème
+        <input type="text" id="a-tag" list="tag-list" value="ajout">
+        <datalist id="tag-list"></datalist>
+      </label>
+      <p class="note">Tu peux écrire le pinyin avec des chiffres (ni3 hao3) : il sera converti en tons à la sortie du champ.</p>
+      <button class="primary" type="submit">Ajouter le mot</button>
+    </form>
+
+    <div class="panel">
+      <h2>Garder les ajouts pour de bon</h2>
+      <p class="note" style="margin-bottom:10px">
+        Les mots ajoutés ici sont enregistrés dans ce navigateur seulement. Pour les ajouter au site,
+        télécharge le fichier à jour et remplace <code>words.js</code> dans ton dépôt GitHub.
+      </p>
+      <button class="ghost" id="btn-export">Télécharger words.js</button>
+      <span id="custom-count" class="muted" style="margin-left:10px"></span>
+    </div>
+  </section>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script src="words.js"></script>
+<script>
+(function(){
+'use strict';
+var $ = function(s){ return document.querySelector(s); };
+var LS_CUSTOM = 'cn_custom_v1', LS_PROG = 'cn_progress_v1';
+var DAYS = [0, 0, 1, 3, 7, 14];
+
+function load(k, d){ try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch(e){ return d; } }
+function save(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+function esc(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+function key(w){ return w.zh + '|' + w.py; }
+function strip(s){ return String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+function tagLabel(t){
+  var m = /^page(\d+)$/.exec(t || '');
+  return m ? 'Page ' + parseInt(m[1], 10) : (t || '');
+}
+function shuffle(a){
+  for (var i = a.length - 1; i > 0; i--){
+    var j = Math.floor(Math.random() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t;
+  }
+  return a;
+}
+function toast(msg){
+  var t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast._t); toast._t = setTimeout(function(){ t.classList.remove('show'); }, 2200);
+}
+function speak(text){
+  if (!('speechSynthesis' in window)) { toast('La lecture audio n’est pas disponible sur cet appareil.'); return; }
+  var u = new SpeechSynthesisUtterance(text); u.lang = 'zh-CN'; u.rate = 0.85;
+  window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
+}
+
+/* Pinyin : chiffres vers tons */
+var TONES = {a:['ā','á','ǎ','à'], e:['ē','é','ě','è'], i:['ī','í','ǐ','ì'], o:['ō','ó','ǒ','ò'], u:['ū','ú','ǔ','ù'], 'ü':['ǖ','ǘ','ǚ','ǜ']};
+function numToMarks(s){
+  return s.replace(/([a-züvA-ZÜ]+)([1-5])/g, function(m, syl, t){
+    t = +t; syl = syl.toLowerCase().replace(/v/g, 'ü');
+    if (t === 5) return syl;
+    var idx = -1, i;
+    if (syl.indexOf('a') > -1) idx = syl.indexOf('a');
+    else if (syl.indexOf('e') > -1) idx = syl.indexOf('e');
+    else if (syl.indexOf('ou') > -1) idx = syl.indexOf('o');
+    else { for (i = syl.length - 1; i >= 0; i--){ if ('aeiouü'.indexOf(syl[i]) > -1){ idx = i; break; } } }
+    if (idx < 0) return m;
+    return syl.slice(0, idx) + TONES[syl[idx]][t - 1] + syl.slice(idx + 1);
+  });
+}
+
+/* Données */
+var base = window.WORDS || [];
+var custom = load(LS_CUSTOM, []);
+var prog = load(LS_PROG, {});
+
+function allWords(){
+  var seen = {}, out = [];
+  base.concat(custom).forEach(function(w){
+    var k = key(w); if (seen[k]) return; seen[k] = true; out.push(w);
+  });
+  return out;
+}
+function isCustomOnly(w){
+  var k = key(w);
+  return !base.some(function(b){ return key(b) === k; });
+}
+function dueCount(){
+  var now = Date.now();
+  return allWords().filter(function(w){ var p = prog[key(w)]; return !p || p.due <= now; }).length;
+}
+function updateStats(){
+  $('#stats').textContent = allWords().length + ' mots · ' + dueCount() + ' à réviser';
+  $('#custom-count').textContent = custom.length ? custom.length + ' ajout(s) dans ce navigateur' : '';
+}
+function fillTags(){
+  var tags = {};
+  allWords().forEach(function(w){ if (w.tag) tags[w.tag] = true; });
+  var list = Object.keys(tags).sort();
+  var sel = $('#f-tag'), cur = sel.value || '*';
+  var html = '<option value="*">Toutes</option><option value="check">À vérifier</option>';
+  list.forEach(function(t){ html += '<option value="' + esc(t) + '">' + esc(tagLabel(t)) + '</option>'; });
+  sel.innerHTML = html;
+  sel.value = Array.prototype.some.call(sel.options, function(o){ return o.value === cur; }) ? cur : '*';
+  $('#tag-list').innerHTML = list.map(function(t){ return '<option value="' + esc(t) + '">'; }).join('');
+}
+
+/* Révision */
+var queue = [], idx = 0, flipped = false;
+
+function buildQueue(){
+  var tag = $('#f-tag').value, all = $('#f-all').checked, now = Date.now();
+  var ws = allWords().filter(function(w){
+    return tag === '*' || (tag === 'check' ? w.check : w.tag === tag);
+  });
+  if (!all) ws = ws.filter(function(w){ var p = prog[key(w)]; return !p || p.due <= now; });
+  return shuffle(ws.slice());
+}
+function startSession(){ queue = buildQueue(); idx = 0; flipped = false; renderCard(); }
+
+function renderCard(){
+  var card = $('#card'), done = idx >= queue.length;
+  $('#btn-flip').hidden = done || flipped;
+  $('#btn-ok').hidden = $('#btn-ko').hidden = done || !flipped;
+  $('#progress').textContent = done ? '' : 'Carte ' + (idx + 1) + ' sur ' + queue.length;
+  if (done){
+    card.innerHTML = '<div class="done"><p>' + (queue.length ? 'Session terminée.' : 'Rien à réviser pour le moment.') +
+      '</p><p class="muted">Coche « Tout réviser » pour ignorer le calendrier, ou ajoute de nouveaux mots.</p>' +
+      '<button class="primary" id="btn-restart" style="margin-top:12px">Recommencer</button></div>';
+    return;
+  }
+  var w = queue[idx], side = $('#f-front').value, html = '';
+  if (!flipped){
+    if (side === 'zh') html = '<div class="hanzi' + (w.zh.length > 6 ? ' long' : '') + '">' + esc(w.zh) + '</div>';
+    else if (side === 'py') html = '<div class="py big">' + esc(w.py) + '</div><button class="icon" data-speak="' + esc(w.zh) + '" aria-label="Écouter">🔊</button>';
+    else html = '<div class="fr big">' + esc(w.fr) + '</div>';
+    html += '<div class="hint">Touche la carte pour la retourner</div>';
+  } else {
+    html = '<div class="hanzi' + (w.zh.length > 6 ? ' long' : '') + '">' + esc(w.zh) + '</div>' +
+      '<div class="py">' + esc(w.py) + ' <button class="icon" data-speak="' + esc(w.zh) + '" aria-label="Écouter">🔊</button></div>' +
+      '<div class="fr">' + esc(w.fr) + (w.check ? ' <span class="badge">à vérifier</span>' : '') + '</div>';
+    if (w.ex){
+      html += '<div class="ex"><div class="exzh">' + esc(w.ex) +
+        ' <button class="icon" data-speak="' + esc(w.ex) + '" aria-label="Écouter la phrase">🔊</button></div>' +
+        '<div class="expy">' + esc(w.expy) + '</div><div class="exfr">' + esc(w.exfr) + '</div></div>';
+    }
+    html += '<div class="tag">' + esc(tagLabel(w.tag)) + '</div>';
+  }
+  card.innerHTML = html;
+}
+function flip(){ if (idx >= queue.length) return; flipped = !flipped; renderCard(); }
+function answer(ok){
+  if (idx >= queue.length || !flipped) return;
+  var w = queue[idx], k = key(w), p = prog[k] || {box: 1};
+  p.box = ok ? Math.min(5, (p.box || 1) + 1) : 1;
+  p.due = Date.now() + DAYS[p.box] * 864e5;
+  prog[k] = p; save(LS_PROG, prog);
+  if (!ok) queue.push(w);
+  idx++; flipped = false; renderCard(); updateStats();
+}
+
+/* Liste */
+function renderList(){
+  var q = strip($('#q').value.trim());
+  var ws = allWords().filter(function(w){
+    if (!q) return true;
+    return w.zh.indexOf($('#q').value.trim()) > -1 || strip(w.py).indexOf(q) > -1 ||
+           strip(w.fr).indexOf(q) > -1 || strip(w.ex || '').indexOf(q) > -1;
+  });
+  $('#count').textContent = ws.length + ' mot' + (ws.length > 1 ? 's' : '');
+  $('#items').innerHTML = ws.map(function(w){
+    var more = '';
+    if (w.ex) more += '<div class="exzh">' + esc(w.ex) + ' <button class="icon" data-speak="' + esc(w.ex) + '" aria-label="Écouter la phrase">🔊</button></div>' +
+      '<div class="expy">' + esc(w.expy) + '</div><div class="exfr">' + esc(w.exfr) + '</div>';
+    more += '<div class="row"><span class="tag">' + esc(tagLabel(w.tag)) + '</span>' +
+      (w.check ? '<span class="badge">à vérifier</span>' : '') +
+      '<button class="icon" data-speak="' + esc(w.zh) + '" aria-label="Écouter">🔊</button>' +
+      (isCustomOnly(w) ? '<button class="icon" data-del="' + esc(key(w)) + '">Supprimer</button>' : '') + '</div>';
+    return '<details class="item"><summary><span class="zh">' + esc(w.zh) + '</span><span class="p">' + esc(w.py) +
+      '</span><span class="f">' + esc(w.fr) + '</span></summary><div class="more">' + more + '</div></details>';
+  }).join('');
+}
+
+/* Ajout et export */
+function addWord(e){
+  e.preventDefault();
+  var w = {
+    zh: $('#a-zh').value.trim(), py: numToMarks($('#a-py').value.trim()), fr: $('#a-fr').value.trim(),
+    ex: $('#a-ex').value.trim(), expy: numToMarks($('#a-expy').value.trim()), exfr: $('#a-exfr').value.trim(),
+    tag: $('#a-tag').value.trim() || 'ajout', check: false
+  };
+  if (!w.zh || !w.py || !w.fr) return;
+  if (allWords().some(function(x){ return key(x) === key(w); })){ toast('Ce mot est déjà dans la liste.'); return; }
+  custom.push(w); save(LS_CUSTOM, custom);
+  $('#a-zh').value = $('#a-py').value = $('#a-fr').value = $('#a-ex').value = $('#a-expy').value = $('#a-exfr').value = '';
+  fillTags(); updateStats(); toast('Mot ajouté : ' + w.zh); $('#a-zh').focus();
+}
+function exportJS(){
+  var lines = allWords().map(function(w){
+    return ' ' + JSON.stringify({zh: w.zh, py: w.py, fr: w.fr, ex: w.ex || '', expy: w.expy || '', exfr: w.exfr || '', tag: w.tag || '', check: !!w.check});
+  });
+  var text = 'window.WORDS = [\n' + lines.join(',\n') + '\n];\n';
+  var blob = new Blob([text], {type: 'text/javascript;charset=utf-8'});
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'words.js';
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){ URL.revokeObjectURL(a.href); }, 500);
+}
+
+/* Navigation */
+function show(v){
+  ['review', 'list', 'add'].forEach(function(x){
+    $('#view-' + x).hidden = x !== v;
+    document.querySelector('nav [data-view="' + x + '"]').setAttribute('aria-selected', x === v ? 'true' : 'false');
+  });
+  if (v === 'review') startSession();
+  if (v === 'list') renderList();
+}
+
+document.querySelectorAll('nav button').forEach(function(b){
+  b.addEventListener('click', function(){ show(b.dataset.view); });
+});
+$('#f-tag').addEventListener('change', startSession);
+$('#f-front').addEventListener('change', startSession);
+$('#f-all').addEventListener('change', startSession);
+$('#btn-flip').addEventListener('click', flip);
+$('#btn-ok').addEventListener('click', function(){ answer(true); });
+$('#btn-ko').addEventListener('click', function(){ answer(false); });
+$('#card').addEventListener('click', function(e){ if (e.target.closest('button')) return; flip(); });
+$('#card').addEventListener('keydown', function(e){ if (e.key === 'Enter'){ e.preventDefault(); flip(); } });
+$('#q').addEventListener('input', renderList);
+$('#add-form').addEventListener('submit', addWord);
+$('#btn-export').addEventListener('click', exportJS);
+['#a-py', '#a-expy'].forEach(function(s){
+  $(s).addEventListener('blur', function(){ this.value = numToMarks(this.value); });
+});
+document.addEventListener('click', function(e){
+  var sp = e.target.closest('[data-speak]');
+  if (sp){ e.preventDefault(); e.stopPropagation(); speak(sp.getAttribute('data-speak')); return; }
+  var del = e.target.closest('[data-del]');
+  if (del){
+    var k = del.getAttribute('data-del');
+    custom = custom.filter(function(w){ return key(w) !== k; }); save(LS_CUSTOM, custom);
+    fillTags(); updateStats(); renderList(); toast('Mot supprimé.'); return;
+  }
+  if (e.target.id === 'btn-restart') startSession();
+});
+document.addEventListener('keydown', function(e){
+  if ($('#view-review').hidden) return;
+  var tag = (e.target.tagName || '').toLowerCase();
+  if (tag === 'input' || tag === 'select' || tag === 'textarea') return;
+  if (e.key === ' '){ e.preventDefault(); flip(); }
+  else if (e.key === 'ArrowLeft') answer(false);
+  else if (e.key === 'ArrowRight') answer(true);
+});
+
+fillTags(); updateStats(); show('review');
+})();
+</script>
+</body>
+</html>
