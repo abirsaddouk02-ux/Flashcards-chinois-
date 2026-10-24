@@ -197,6 +197,18 @@ form input{width:100%; font-size:1rem}
       <button class="ghost" id="btn-export">Télécharger words.js</button>
       <span id="custom-count" class="muted" style="margin-left:10px"></span>
     </div>
+
+    <div class="panel">
+      <h2>Retrouver ma progression sur un autre navigateur</h2>
+      <p class="note" style="margin-bottom:10px">
+        Exporte un fichier depuis un navigateur, puis importe-le dans un autre pour récupérer tes cartes révisées
+        et les mots que tu as ajoutés. Les deux versions sont fusionnées : pour chaque carte, la révision la plus
+        récente est conservée.
+      </p>
+      <button class="ghost" id="btn-save">Exporter ma progression</button>
+      <button class="ghost" id="btn-load">Importer un fichier</button>
+      <input type="file" id="file-load" accept="application/json,.json" hidden>
+    </div>
   </section>
 </div>
 <div id="toast" role="status" aria-live="polite"></div>
@@ -338,7 +350,7 @@ function answer(ok){
   if (idx >= queue.length || !flipped) return;
   var w = queue[idx], k = key(w), p = prog[k] || {box: 1};
   p.box = ok ? Math.min(5, (p.box || 1) + 1) : 1;
-  p.due = Date.now() + DAYS[p.box] * 864e5;
+  p.due = Date.now() + DAYS[p.box] * 864e5; p.ts = Date.now();
   prog[k] = p; save(LS_PROG, prog);
   if (!ok) queue.push(w);
   idx++; flipped = false; renderCard(); updateStats();
@@ -390,6 +402,50 @@ function exportJS(){
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){ URL.revokeObjectURL(a.href); }, 500);
 }
 
+/* Sauvegarde de la progression */
+function exportProgress(){
+  var data = {app: 'vocab-chinois', version: 1, exportedAt: new Date().toISOString(), progress: prog, custom: custom};
+  var blob = new Blob([JSON.stringify(data, null, 1)], {type: 'application/json;charset=utf-8'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'progression-chinois-' + new Date().toISOString().slice(0, 10) + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 500);
+  toast('Fichier de progression téléchargé.');
+}
+function importProgress(file){
+  if (!file) return;
+  var r = new FileReader();
+  r.onerror = function(){ toast('Impossible de lire ce fichier.'); };
+  r.onload = function(){
+    var d;
+    try { d = JSON.parse(r.result); } catch(e){ toast('Fichier illisible.'); return; }
+    if (!d || d.app !== 'vocab-chinois' || !d.progress || typeof d.progress !== 'object' || !Array.isArray(d.custom)){
+      toast('Ce fichier n\u2019est pas une sauvegarde valide.'); return;
+    }
+    var nProg = 0, nWords = 0;
+    Object.keys(d.progress).forEach(function(k){
+      var inc = d.progress[k];
+      if (!inc || typeof inc.due !== 'number' || typeof inc.box !== 'number') return;
+      var cur = prog[k];
+      if (!cur || (inc.ts || 0) > (cur.ts || 0)){ prog[k] = {box: inc.box, due: inc.due, ts: inc.ts || 0}; nProg++; }
+    });
+    var known = {};
+    allWords().forEach(function(w){ known[key(w)] = true; });
+    d.custom.forEach(function(w){
+      if (!w || typeof w.zh !== 'string' || typeof w.py !== 'string' || typeof w.fr !== 'string') return;
+      var clean = {zh: w.zh, py: w.py, fr: w.fr, ex: String(w.ex || ''), expy: String(w.expy || ''),
+                   exfr: String(w.exfr || ''), tag: String(w.tag || 'ajout'), check: !!w.check};
+      if (known[key(clean)]) return;
+      known[key(clean)] = true; custom.push(clean); nWords++;
+    });
+    save(LS_PROG, prog); save(LS_CUSTOM, custom);
+    fillTags(); updateStats();
+    toast(nProg + ' carte(s) mise(s) à jour, ' + nWords + ' mot(s) ajouté(s).');
+  };
+  r.readAsText(file);
+}
+
 /* Navigation */
 function show(v){
   ['review', 'list', 'add'].forEach(function(x){
@@ -414,6 +470,9 @@ $('#card').addEventListener('keydown', function(e){ if (e.key === 'Enter'){ e.pr
 $('#q').addEventListener('input', renderList);
 $('#add-form').addEventListener('submit', addWord);
 $('#btn-export').addEventListener('click', exportJS);
+$('#btn-save').addEventListener('click', exportProgress);
+$('#btn-load').addEventListener('click', function(){ $('#file-load').click(); });
+$('#file-load').addEventListener('change', function(){ importProgress(this.files[0]); this.value = ''; });
 ['#a-py', '#a-expy'].forEach(function(s){
   $(s).addEventListener('blur', function(){ this.value = numToMarks(this.value); });
 });
