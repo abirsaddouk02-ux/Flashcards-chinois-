@@ -126,7 +126,7 @@ form input{width:100%; font-size:1rem}
   <!-- Réviser -->
   <section id="view-review">
     <div class="controls">
-      <label>Page <select id="f-tag"></select></label>
+      <label>Catégorie <select id="f-tag"></select></label>
       <label>Recto
         <select id="f-front">
           <option value="zh">Caractères</option>
@@ -180,8 +180,8 @@ form input{width:100%; font-size:1rem}
           <input type="text" id="a-exfr">
         </label>
       </div>
-      <label>Page ou thème
-        <input type="text" id="a-tag" list="tag-list" value="ajout">
+      <label>Catégorie
+        <input type="text" id="a-tag" list="tag-list" value="Divers">
         <datalist id="tag-list"></datalist>
       </label>
       <p class="note">Tu peux écrire le pinyin avec des chiffres (ni3 hao3) : il sera converti en tons à la sortie du champ.</p>
@@ -228,8 +228,9 @@ function esc(s){
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
   });
 }
-function key(w){ return w.zh + '|' + w.py; }
+function key(w){ return w.zh + '|' + w.py + (w.v ? '|' + w.v : ''); }
 function strip(s){ return String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+function catOf(w){ return (w && w.cat) || 'Divers'; }
 function tagLabel(t){
   var m = /^page(\d+)$/.exec(t || '');
   return m ? 'Page ' + parseInt(m[1], 10) : (t || '');
@@ -292,11 +293,11 @@ function updateStats(){
 }
 function fillTags(){
   var tags = {};
-  allWords().forEach(function(w){ if (w.tag) tags[w.tag] = true; });
-  var list = Object.keys(tags).sort();
+  allWords().forEach(function(w){ tags[catOf(w)] = true; });
+  var list = Object.keys(tags).sort(function(a, b){ return a.localeCompare(b, 'fr'); });
   var sel = $('#f-tag'), cur = sel.value || '*';
   var html = '<option value="*">Toutes</option><option value="check">À vérifier</option>';
-  list.forEach(function(t){ html += '<option value="' + esc(t) + '">' + esc(tagLabel(t)) + '</option>'; });
+  list.forEach(function(t){ html += '<option value="' + esc(t) + '">' + esc(t) + '</option>'; });
   sel.innerHTML = html;
   sel.value = Array.prototype.some.call(sel.options, function(o){ return o.value === cur; }) ? cur : '*';
   $('#tag-list').innerHTML = list.map(function(t){ return '<option value="' + esc(t) + '">'; }).join('');
@@ -308,7 +309,7 @@ var queue = [], idx = 0, flipped = false;
 function buildQueue(){
   var tag = $('#f-tag').value, all = $('#f-all').checked, now = Date.now();
   var ws = allWords().filter(function(w){
-    return tag === '*' || (tag === 'check' ? w.check : w.tag === tag);
+    return tag === '*' || (tag === 'check' ? w.check : catOf(w) === tag);
   });
   if (!all) ws = ws.filter(function(w){ var p = prog[key(w)]; return !p || p.due <= now; });
   return shuffle(ws.slice());
@@ -331,6 +332,7 @@ function renderCard(){
     if (side === 'zh') html = '<div class="hanzi' + (w.zh.length > 6 ? ' long' : '') + '">' + esc(w.zh) + '</div>';
     else if (side === 'py') html = '<div class="py big">' + esc(w.py) + '</div><button class="icon" data-speak="' + esc(w.zh) + '" aria-label="Écouter">🔊</button>';
     else html = '<div class="fr big">' + esc(w.fr) + '</div>';
+    if (w.ctx && w.ex && side !== 'fr') html += '<div class="exzh" style="margin-top:6px">' + esc(w.ex) + '</div>';
     html += '<div class="hint">Touche la carte pour la retourner</div>';
   } else {
     html = '<div class="hanzi' + (w.zh.length > 6 ? ' long' : '') + '">' + esc(w.zh) + '</div>' +
@@ -341,7 +343,7 @@ function renderCard(){
         ' <button class="icon" data-speak="' + esc(w.ex) + '" aria-label="Écouter la phrase">🔊</button></div>' +
         '<div class="expy">' + esc(w.expy) + '</div><div class="exfr">' + esc(w.exfr) + '</div></div>';
     }
-    html += '<div class="tag">' + esc(tagLabel(w.tag)) + '</div>';
+    html += '<div class="tag">' + esc(catOf(w)) + '</div>';
   }
   card.innerHTML = html;
 }
@@ -369,7 +371,7 @@ function renderList(){
     var more = '';
     if (w.ex) more += '<div class="exzh">' + esc(w.ex) + ' <button class="icon" data-speak="' + esc(w.ex) + '" aria-label="Écouter la phrase">🔊</button></div>' +
       '<div class="expy">' + esc(w.expy) + '</div><div class="exfr">' + esc(w.exfr) + '</div>';
-    more += '<div class="row"><span class="tag">' + esc(tagLabel(w.tag)) + '</span>' +
+    more += '<div class="row"><span class="tag">' + esc(catOf(w)) + '</span>' +
       (w.check ? '<span class="badge">à vérifier</span>' : '') +
       '<button class="icon" data-speak="' + esc(w.zh) + '" aria-label="Écouter">🔊</button>' +
       (isCustomOnly(w) ? '<button class="icon" data-del="' + esc(key(w)) + '">Supprimer</button>' : '') + '</div>';
@@ -384,7 +386,7 @@ function addWord(e){
   var w = {
     zh: $('#a-zh').value.trim(), py: numToMarks($('#a-py').value.trim()), fr: $('#a-fr').value.trim(),
     ex: $('#a-ex').value.trim(), expy: numToMarks($('#a-expy').value.trim()), exfr: $('#a-exfr').value.trim(),
-    tag: $('#a-tag').value.trim() || 'ajout', check: false
+    cat: $('#a-tag').value.trim() || 'Divers', tag: '', check: false
   };
   if (!w.zh || !w.py || !w.fr) return;
   if (allWords().some(function(x){ return key(x) === key(w); })){ toast('Ce mot est déjà dans la liste.'); return; }
@@ -394,7 +396,7 @@ function addWord(e){
 }
 function exportJS(){
   var lines = allWords().map(function(w){
-    return ' ' + JSON.stringify({zh: w.zh, py: w.py, fr: w.fr, ex: w.ex || '', expy: w.expy || '', exfr: w.exfr || '', tag: w.tag || '', check: !!w.check});
+    return ' ' + JSON.stringify({zh: w.zh, py: w.py, fr: w.fr, ex: w.ex || '', expy: w.expy || '', exfr: w.exfr || '', cat: catOf(w), tag: w.tag || '', check: !!w.check, v: w.v, ctx: w.ctx ? true : undefined});
   });
   var text = 'window.WORDS = [\n' + lines.join(',\n') + '\n];\n';
   var blob = new Blob([text], {type: 'text/javascript;charset=utf-8'});
@@ -435,7 +437,7 @@ function importProgress(file){
     d.custom.forEach(function(w){
       if (!w || typeof w.zh !== 'string' || typeof w.py !== 'string' || typeof w.fr !== 'string') return;
       var clean = {zh: w.zh, py: w.py, fr: w.fr, ex: String(w.ex || ''), expy: String(w.expy || ''),
-                   exfr: String(w.exfr || ''), tag: String(w.tag || 'ajout'), check: !!w.check};
+                   exfr: String(w.exfr || ''), cat: String(w.cat || 'Divers'), tag: String(w.tag || ''), check: !!w.check};
       if (known[key(clean)]) return;
       known[key(clean)] = true; custom.push(clean); nWords++;
     });
