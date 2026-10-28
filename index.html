@@ -215,8 +215,8 @@ form input{width:100%; font-size:1rem}
 </div>
 <div id="toast" role="status" aria-live="polite"></div>
 
-<script src="words.js"></script>
-<script src="hsk.js"></script>
+<script src="words.js?v=2"></script>
+<script src="hsk.js?v=2"></script>
 <script>
 (function(){
 'use strict';
@@ -248,10 +248,43 @@ function toast(msg){
   var t = $('#toast'); t.textContent = msg; t.classList.add('show');
   clearTimeout(toast._t); toast._t = setTimeout(function(){ t.classList.remove('show'); }, 2200);
 }
+var zhVoice = null;
+function pickVoice(){
+  if (!('speechSynthesis' in window)) return null;
+  var vs = window.speechSynthesis.getVoices() || [];
+  zhVoice = null;
+  for (var i = 0; i < vs.length; i++){
+    var l = (vs[i].lang || '').replace('_', '-').toLowerCase();
+    if (l === 'zh-cn' || l === 'zh-hans-cn') { zhVoice = vs[i]; break; }
+  }
+  if (!zhVoice) for (var j = 0; j < vs.length; j++){
+    if (/^zh/i.test((vs[j].lang || '').replace('_', '-'))) { zhVoice = vs[j]; break; }
+  }
+  return zhVoice;
+}
+if ('speechSynthesis' in window){
+  pickVoice();
+  if (window.speechSynthesis.addEventListener) window.speechSynthesis.addEventListener('voiceschanged', pickVoice);
+}
+var audioEl = null;
+function speakOnline(text){
+  try {
+    if (audioEl) audioEl.pause();
+    audioEl = new Audio('https://translate.googleapis.com/translate_tts?ie=UTF-8&client=gtx&tl=zh-CN&q=' + encodeURIComponent(text));
+    var pr = audioEl.play();
+    if (pr && pr.catch) pr.catch(function(){ toast('Audio indisponible : aucune voix chinoise sur cet appareil et pas de connexion au service en ligne.'); });
+  } catch(e){ toast('Audio indisponible sur cet appareil.'); }
+}
 function speak(text){
-  if (!('speechSynthesis' in window)) { toast('La lecture audio n’est pas disponible sur cet appareil.'); return; }
-  var u = new SpeechSynthesisUtterance(text); u.lang = 'zh-CN'; u.rate = 0.85;
-  window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
+  if ('speechSynthesis' in window){
+    if (!zhVoice) pickVoice();
+    if (zhVoice){
+      var u = new SpeechSynthesisUtterance(text); u.voice = zhVoice; u.lang = zhVoice.lang || 'zh-CN'; u.rate = 0.85;
+      window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
+      return;
+    }
+  }
+  speakOnline(text);
 }
 
 /* Pinyin : chiffres vers tons */
@@ -348,6 +381,10 @@ function renderCard(){
   $('#btn-flip').hidden = done || flipped;
   $('#btn-ok').hidden = $('#btn-ko').hidden = done || !flipped;
   $('#progress').textContent = done ? '' : 'Carte ' + (idx + 1) + ' sur ' + queue.length;
+  if (done && mode === 'hsk' && !hsk.length){
+    card.innerHTML = '<div class="done"><p>Les cartes HSK sont introuvables.</p><p class="muted">Le fichier <code>hsk.js</code> doit être déposé dans le dépôt GitHub, au même endroit que <code>index.html</code>. Ensuite, recharge la page en forçant l’actualisation.</p></div>';
+    return;
+  }
   if (done){
     card.innerHTML = '<div class="done"><p>' + (queue.length ? 'Session terminée.' : 'Rien à réviser pour le moment.') +
       '</p><p class="muted">Coche « Tout réviser » pour ignorer le calendrier, ou ajoute de nouveaux mots.</p>' +
