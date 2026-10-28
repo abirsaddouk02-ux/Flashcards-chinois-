@@ -71,7 +71,7 @@ button.primary{background:var(--accent); color:var(--accent-ink); font-weight:60
 button.ok{background:var(--ok); color:#fff; font-weight:600}
 button.ko{background:var(--ko); color:#fff; font-weight:600}
 button.ghost{background:var(--card); color:var(--ink); border-color:var(--line)}
-button[hidden]{display:none}
+[hidden]{display:none !important}
 #progress{color:var(--muted); font-size:.85rem; text-align:center; margin-top:10px; min-height:1.2em}
 .done p{margin:.3em 0}
 .muted{color:var(--muted)}
@@ -119,6 +119,7 @@ form input{width:100%; font-size:1rem}
 
   <nav role="tablist" aria-label="Sections">
     <button role="tab" data-view="review" aria-selected="true">Réviser</button>
+    <button role="tab" data-view="hsk" aria-selected="false">HSK</button>
     <button role="tab" data-view="list" aria-selected="false">Liste</button>
     <button role="tab" data-view="add" aria-selected="false">Ajouter</button>
   </nav>
@@ -126,7 +127,8 @@ form input{width:100%; font-size:1rem}
   <!-- Réviser -->
   <section id="view-review">
     <div class="controls">
-      <label>Catégorie <select id="f-tag"></select></label>
+      <label id="l-tag">Catégorie <select id="f-tag"></select></label>
+      <label id="l-level" hidden>Niveau <select id="f-level"></select></label>
       <label>Recto
         <select id="f-front">
           <option value="zh">Caractères</option>
@@ -214,6 +216,7 @@ form input{width:100%; font-size:1rem}
 <div id="toast" role="status" aria-live="polite"></div>
 
 <script src="words.js"></script>
+<script src="hsk.js"></script>
 <script>
 (function(){
 'use strict';
@@ -228,7 +231,7 @@ function esc(s){
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
   });
 }
-function key(w){ return w.zh + '|' + w.py + (w.v ? '|' + w.v : ''); }
+function key(w){ return (w.level ? 'hsk|' : '') + w.zh + '|' + w.py + (w.v ? '|' + w.v : ''); }
 function strip(s){ return String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
 function catOf(w){ return (w && w.cat) || 'Divers'; }
 function tagLabel(t){
@@ -269,6 +272,8 @@ function numToMarks(s){
 
 /* Données */
 var base = window.WORDS || [];
+var hsk = window.HSK || [];
+var mode = 'base';
 var custom = load(LS_CUSTOM, []);
 var prog = load(LS_PROG, {});
 
@@ -287,8 +292,13 @@ function dueCount(){
   var now = Date.now();
   return allWords().filter(function(w){ var p = prog[key(w)]; return !p || p.due <= now; }).length;
 }
+function hskDue(ws){
+  var now = Date.now();
+  return ws.filter(function(w){ var p = prog[key(w)]; return !p || p.due <= now; }).length;
+}
 function updateStats(){
-  $('#stats').textContent = allWords().length + ' mots · ' + dueCount() + ' à réviser';
+  if (mode === 'hsk') $('#stats').textContent = 'HSK · ' + hsk.length + ' mots · ' + hskDue(hsk) + ' à réviser';
+  else $('#stats').textContent = allWords().length + ' mots · ' + dueCount() + ' à réviser';
   $('#custom-count').textContent = custom.length ? custom.length + ' ajout(s) dans ce navigateur' : '';
 }
 function fillTags(){
@@ -303,14 +313,31 @@ function fillTags(){
   $('#tag-list').innerHTML = list.map(function(t){ return '<option value="' + esc(t) + '">'; }).join('');
 }
 
+function fillLevels(){
+  var lv = {};
+  hsk.forEach(function(w){ lv[w.level] = true; });
+  var list = Object.keys(lv).map(Number).sort(), sel = $('#f-level'), cur = sel.value;
+  var html = list.length > 1 ? '<option value="*">Tous les niveaux</option>' : '';
+  list.forEach(function(n){
+    html += '<option value="' + n + '">HSK ' + n + ' (' + hsk.filter(function(w){ return w.level === n; }).length + ' mots)</option>';
+  });
+  sel.innerHTML = html;
+  sel.value = Array.prototype.some.call(sel.options, function(o){ return o.value === cur; }) ? cur : (list[0] ? String(list[0]) : '');
+}
+
 /* Révision */
 var queue = [], idx = 0, flipped = false;
 
 function buildQueue(){
-  var tag = $('#f-tag').value, all = $('#f-all').checked, now = Date.now();
-  var ws = allWords().filter(function(w){
-    return tag === '*' || (tag === 'check' ? w.check : catOf(w) === tag);
-  });
+  var tag = $('#f-tag').value, all = $('#f-all').checked, now = Date.now(), ws;
+  if (mode === 'hsk'){
+    var lvl = $('#f-level').value;
+    ws = hsk.filter(function(w){ return lvl === '*' || String(w.level) === lvl; });
+  } else {
+    ws = allWords().filter(function(w){
+      return tag === '*' || (tag === 'check' ? w.check : catOf(w) === tag);
+    });
+  }
   if (!all) ws = ws.filter(function(w){ var p = prog[key(w)]; return !p || p.due <= now; });
   return shuffle(ws.slice());
 }
@@ -343,7 +370,7 @@ function renderCard(){
         ' <button class="icon" data-speak="' + esc(w.ex) + '" aria-label="Écouter la phrase">🔊</button></div>' +
         '<div class="expy">' + esc(w.expy) + '</div><div class="exfr">' + esc(w.exfr) + '</div></div>';
     }
-    html += '<div class="tag">' + esc(catOf(w)) + '</div>';
+    html += '<div class="tag">' + (w.level ? 'HSK ' + w.level : esc(catOf(w))) + '</div>';
   }
   card.innerHTML = html;
 }
@@ -450,11 +477,16 @@ function importProgress(file){
 
 /* Navigation */
 function show(v){
-  ['review', 'list', 'add'].forEach(function(x){
-    $('#view-' + x).hidden = x !== v;
+  var sec = v === 'hsk' ? 'review' : v;
+  ['review', 'list', 'add'].forEach(function(x){ $('#view-' + x).hidden = x !== sec; });
+  ['review', 'hsk', 'list', 'add'].forEach(function(x){
     document.querySelector('nav [data-view="' + x + '"]').setAttribute('aria-selected', x === v ? 'true' : 'false');
   });
-  if (v === 'review') startSession();
+  if (v === 'review' || v === 'hsk'){
+    mode = v === 'hsk' ? 'hsk' : 'base';
+    $('#l-tag').hidden = mode === 'hsk'; $('#l-level').hidden = mode !== 'hsk';
+    updateStats(); startSession();
+  } else { mode = 'base'; updateStats(); }
   if (v === 'list') renderList();
 }
 
@@ -462,6 +494,7 @@ document.querySelectorAll('nav button').forEach(function(b){
   b.addEventListener('click', function(){ show(b.dataset.view); });
 });
 $('#f-tag').addEventListener('change', startSession);
+$('#f-level').addEventListener('change', startSession);
 $('#f-front').addEventListener('change', startSession);
 $('#f-all').addEventListener('change', startSession);
 $('#btn-flip').addEventListener('click', flip);
@@ -498,7 +531,7 @@ document.addEventListener('keydown', function(e){
   else if (e.key === 'ArrowRight') answer(true);
 });
 
-fillTags(); updateStats(); show('review');
+fillTags(); fillLevels(); updateStats(); show('review');
 })();
 </script>
 </body>
